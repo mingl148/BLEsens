@@ -34,80 +34,115 @@ int battery = 0;
 long pressureLastMillis = 0;
 long batteryLastMillis = 0;
 long tempsensLastMillis = 0;
+long sendLastMillis = 0;
 long currentMillis = 0;
 
 float pressure_sens = 0;
-float temperature_sens = 0;
-float humidity_sens = 0;
+short temperature_sens = 0;
+short humidity_sens = 0;
 
-const int intervalSend = 1000;
-const int intervalBattery = 5000;
+const int intervalSend = 200;
+const int intervalBattery = 20000;
 const int intervalPressure = 200;
-const int intervalTemp = 1000;
+const int intervalTemp = 20000;
 
-short humidity_sensint = 500;
-short temperature_sensint = 320;
-short pressure_sensint = 10040;
+
+
+
+
+#define RED 0,1,1
+#define BLUE 1,1,0
+#define GREEN 1,0,1
+#define BLACK 1,1,1
+#define CYAN 1,0,0
+#define YELLOW 0,1,0
+#define PURPLE 0,1,0
+#define WHITE 0,0,0
 
 void setup()
 {
 
   Serial.begin(9600);
-  while (!Serial);
-  Serial.println("komunikace jede");
+
+
   pinMode(ledPinRed, OUTPUT);
   pinMode(ledPinGreen, OUTPUT);
   pinMode(ledPinBlue, OUTPUT);
-  Serial.println("LED nastaveny");
-
-
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(ledPinRed, LOW);
-  digitalWrite(ledPinGreen, LOW);
-  digitalWrite(ledPinBlue, LOW);
-  Serial.println("sviti");
+
+  Led_color(RED);
   delay(1000);
-  digitalWrite(ledPinRed, HIGH);
-  digitalWrite(ledPinGreen, HIGH);
-  digitalWrite(ledPinBlue, HIGH);
-  Serial.println("nesviti");
-  for (int i = 0; i < 5; i++)
-  {
-    digitalWrite(ledPinRed, LOW);
-    delay(500);
-    digitalWrite(ledPinRed, HIGH);
-    delay(500);
-    Serial.println("blik");
+  Led_color(BLUE);
+  delay(1000);
+  Led_color(GREEN);
+  delay(1000);
+  Led_color(YELLOW);
+  delay(1000);
+  Led_color(CYAN);
+  delay(1000);
+  Led_color(PURPLE);
+  delay(1000);
+  Led_color(WHITE);
+  delay(1000);
+  Led_color(BLACK);
+  delay(1000);
+
+  if (Serial)
+  { for (int i = 0; i < 5; i++)
+    {
+      Led_color(GREEN);
+      delay(250);
+      Led_color(0, 0, 0);
+      delay(250);
+    }
   }
 
-  while (!Serial)
-  {
-    digitalWrite(ledPinBlue, LOW);
-    delay(250);
-    digitalWrite(ledPinBlue, HIGH);
-    delay(250);
-  }
-  Serial.println("komunikuje");
-  if (!BARO.begin())
-  {
-    Serial.println("Failed to initialize pressure sensor!");
-    while (1)
+  if (BARO.begin())
+  { for (int i = 0; i < 5; i++)
     {
-      digitalWrite(ledPinRed, !digitalRead(ledPinRed));
+      Led_color(PURPLE);
+      delay(500);
+      Led_color(BLACK);
       delay(500);
     }
+    Serial.println("tlak meri");
   }
-  Serial.println("tlak meri");
-  if (!HTS.begin())
-  {
-    Serial.println("Failed to initialize pressure sensor!");
+  else {
     while (1)
     {
-      digitalWrite(ledPinRed, !digitalRead(ledPinRed));
-      delay(500);
+      Led_color(RED);
+      delay(250);
+      Led_color(PURPLE);
+      delay(250);
+      Led_color(0, 0, 0);
+      delay(250);
     }
   }
-  Serial.println("teplota meri");
+
+  if (HTS.begin())
+  {
+    for (int i = 0; i < 5; i++)
+    {
+      Led_color(CYAN);
+      delay(500);
+      Led_color(BLACK);
+      delay(500);
+    }
+    Serial.println("teplota meri");
+  }
+  else
+  {
+    while (1)
+    {
+      Led_color(RED);
+      delay(250);
+      Led_color(CYAN);
+      delay(250);
+      Led_color(BLACK);
+      delay(250);
+    }
+  }
+
 
   // initialize the built-in LED pin to indicate when a central is connected
 
@@ -115,15 +150,27 @@ void setup()
   if (!BLE.begin())
   {
     Serial.println("starting BLE failed!");
-
     while (1)
     {
-      digitalWrite(ledPinRed, !digitalRead(ledPinRed));
-      delay(500);
+      Led_color(RED);
+      delay(250);
+      Led_color(YELLOW);
+      delay(250);
+      Led_color(0, 0, 0);
+      delay(250);
     }
   }
-  Serial.println("BLE jede");
-
+  else
+  {
+    Serial.println("BLE jede");
+    for (int i = 0; i < 5; i++)
+    {
+      Led_color(YELLOW);
+      delay(250);
+      Led_color(0, 0, 0);
+      delay(250);
+    }
+  }
 
   BLE.setLocalName("BLEsens");
 
@@ -131,8 +178,6 @@ void setup()
   batteryService.addCharacteristic(batteryLevelChar);
   BLE.addService(batteryService);
   batteryLevelChar.writeValue(oldBatteryLevel);
-
-
   BLE.setAdvertisedService(Sensor);
   Sensor.addCharacteristic(temp);
   Sensor.addCharacteristic(pressure);
@@ -145,6 +190,7 @@ void setup()
   BLE.advertise();
 
   Serial.println("Bluetooth device active, waiting for connections...");
+
 }
 
 void loop()
@@ -161,30 +207,31 @@ void loop()
     // turn on the LED to indicate the connection:
     digitalWrite(LED_BUILTIN, HIGH);
 
-    // check the battery level every 200ms
-    // while the central is connected:
     while (central.connected())
     {
       currentMillis = millis();
       updateBatteryLevel();
       update_sens();
-      //   sendBySerial();
+      if (Serial)
+      {
+        sendBySerial();
+      }
+      delay(250);
+      Led_color(BLACK);
     }
   }
-  // when the central disconnects, turn off the LED:
+
+  Led_color(BLACK);
   digitalWrite(LED_BUILTIN, LOW);
   Serial.print("Disconnected from central: ");
   Serial.println(central.address());
-
 }
 
 void updateBatteryLevel()
 {
-  /* Read the current voltage level on the A0 analog input pin.
-    This is used here to simulate the charge level of a battery.
-  */
   if (currentMillis - batteryLastMillis >= intervalBattery)
   {
+    Led_color(YELLOW);
     battery = analogRead(A0);
     int batteryLevel = map(battery, 0, 1023, 0, 100);
     if (batteryLevel != oldBatteryLevel)
@@ -202,41 +249,58 @@ void updateBatteryLevel()
 
 void update_sens()
 {
+#define pressure_calibration_k0   1
+#define pressure_calibration_k1   0
   if (currentMillis - pressureLastMillis >= intervalPressure)
   {
+
+
+    Led_color(PURPLE);
     pressure_sens = BARO.readPressure() * 10000;
+    pressure_sens =  pressure_sens * pressure_calibration_k0 +  pressure_calibration_k1;
     //pressure_sensint = pressure_sens;
     pressure.writeValue(pressure_sens);
-    Serial.print(" tlak: ");
-    Serial.print(pressure_sens);
     pressureLastMillis = currentMillis;
   }
 
   if (currentMillis - tempsensLastMillis >= intervalTemp)
   {
+#define   temperature_calibration_k0   1
+#define   temperature_calibration_k1   -1000
+#define   humidity_calibration_k0   1
+#define   humidity_calibration_k1  0
+    Led_color(CYAN);
     temperature_sens = HTS.readTemperature() * 100;
-    // temperature_sensint = temperature_sens * 10;
+    temperature_sens = (temperature_sens * temperature_calibration_k0) + temperature_calibration_k1;
+
     humidity_sens = HTS.readHumidity() * 100;
-    // humidity_sensint = humidity_sens * 10;
+    humidity_sens =  humidity_sens * humidity_calibration_k0 + humidity_calibration_k1;
+
     temp.writeValue(temperature_sens);
     humidity.writeValue(humidity_sens);
-    //  Serial.print(" teplota: ");
-    //  Serial.print(temperature_sens);
-    //  Serial.print(" vlhkost: ");
-    //  Serial.println(humidity_sens);
+
     tempsensLastMillis = currentMillis;
   }
 }
 
 void sendBySerial()
 {
-  if (currentMillis - tempsensLastMillis >= intervalSend)
+  Led_color(GREEN);
+  if (currentMillis - sendLastMillis >= intervalSend)
   {
-
+    Serial.print(" teplota: ");
+    Serial.print(temperature_sens);
     Serial.print(" vlhkost: ");
-    Serial.print(humidity_sensint);
-    Serial.print(" tlak: ");
     Serial.print(humidity_sens);
-    tempsensLastMillis = currentMillis;
+    Serial.print(" tlak: ");
+    Serial.println(pressure_sens);
+    sendLastMillis = currentMillis;
   }
+}
+
+void Led_color( bool Red, bool Blue , bool Green) {
+
+  digitalWrite(ledPinRed, Red);
+  digitalWrite(ledPinBlue, Blue);
+  digitalWrite(ledPinGreen, Green);
 }
